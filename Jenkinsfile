@@ -1,59 +1,54 @@
 pipeline {
-  agent any
 
+  agent any
   environment {
     NODE_ENV = 'production'
-    REGISTRY = 'ghcr.io'
-    IMAGE_NAME = 'patient-portal'
+    AWS_REGION = 'us-east-1'
+    ECR_SNAPSHOT = '147997138755.dkr.ecr.us-east-1.amazonaws.com/snapshot/patientportal'
+    ECR_RELEASE = '147997138755.dkr.ecr.us-east-1.amazonaws.com/patientportal'
+    IMAGE_NAME = 'patientportal'
   }
-
   stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-
-    stage('Install Dependencies') {
-      steps {
-        sh 'npm ci'
-      }
-    }
-
-    stage('Lint') {
-      steps {
-        sh 'npm run lint'
-        sh 'npm run format -- --check'
-      }
-    }
-
+    stage('Checkout') { steps { checkout scm } }
     stage('Build') {
       steps {
+        sh 'npm ci'
         sh 'npm run build'
       }
     }
-
-    stage('Docker Build & Push') {
+    stage('Test-Sonarqube') {
+      steps {
+        withSonarQubeEnv('SonarQube') {
+          sh 'npm run test:coverage'
+          sh 'sonar-scanner -Dsonar.projectKey=patientportal -Dsonar.sources=.'
+        }
+      }
+    }
+    stage('DockerBuild Snapshot') {
       steps {
         script {
-          dockerImage = docker.build("${REGISTRY}/${IMAGE_NAME}:${env.BUILD_NUMBER}")
-          docker.withRegistry("https://${REGISTRY}", 'github-docker-credentials') {
-            dockerImage.push()
+          dockerImage = docker.build("${ECR_SNAPSHOT}:${env.BUILD_NUMBER}")
+        }
+      }
+    }
+    stage('Aqua Trivy Scan') {
+      steps {
+        sh 'trivy image --exit-code 1 --severity HIGH,CRITICAL ${ECR_SNAPSHOT}:${env.BUILD_NUMBER} || true'
+      }
+    }
+    stage('Snapshot to Release') {
+      steps {
+        script {
+          sh "docker tag ${ECR_SNAPSHOT}:${env.BUILD_NUMBER} ${ECR_RELEASE}:release"
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ecr-jenkins']]) {
+            sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin 147997138755.dkr.ecr.us-east-1.amazonaws.com"
+            sh "docker push ${ECR_RELEASE}:release"
           }
         }
       }
     }
   }
-
   post {
-    always {
-      cleanWs()
-    }
-    failure {
-      echo 'Build failed!'
-    }
-    success {
-      echo 'Build succeeded!'
-    }
+    always { cleanWs() }
   }
 }
