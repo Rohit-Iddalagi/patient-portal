@@ -69,6 +69,8 @@ pipeline {
           withCredentials([aws(credentialsId: 'AWS Credentials')]) {
             sh "docker tag ${ECR_SNAPSHOT}:${env.BUILD_NUMBER} ${ECR_RELEASE}:release-${env.BUILD_NUMBER}"
             sh "docker push ${ECR_RELEASE}:release-${env.BUILD_NUMBER}"
+            sh "docker tag ${ECR_SNAPSHOT}:${env.BUILD_NUMBER} ${ECR_RELEASE}:latest"
+            sh "docker push ${ECR_RELEASE}:latest"
           }
         }
       }
