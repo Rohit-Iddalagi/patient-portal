@@ -89,10 +89,15 @@ describe('api service', () => {
 
     expect(responseSuccessHandler({ data: { ok: true } })).toEqual({ ok: true })
 
-    await expect(
-      responseErrorHandler({ response: { status: 401 } })
-    ).rejects.toMatchObject({ response: { status: 401 } })
+    const error = { response: { status: 401 } }
+    let thrown
+    try {
+      responseErrorHandler(error)
+    } catch (err) {
+      thrown = err
+    }
 
+    expect(thrown).toBe(error)
     expect(localStorage.getItem('token')).toBeNull()
   })
 })

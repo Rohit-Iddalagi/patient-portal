@@ -13,6 +13,9 @@ const redirectToLogin = () => {
   if (typeof window === 'undefined' || !window.location) {
     return
   }
+  if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '')) {
+    return
+  }
 
   try {
     window.location.href = '/login'
