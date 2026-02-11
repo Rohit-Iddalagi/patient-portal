@@ -9,6 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .jsx,.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{jsx,js,css}\""
   },
@@ -23,7 +25,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.6.0",
     "vite": "^5.0.8",
+    "vitest": "^1.6.0",
     "eslint": "^8.54.0",
     "eslint-plugin-react": "^7.33.2",
     "prettier": "^3.1.0",
