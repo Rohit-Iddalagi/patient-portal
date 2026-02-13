@@ -1,7 +1,50 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCreatePatient, usePatients } from '../hooks/useAPI'
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('patients')
+  const [patientForm, setPatientForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: 'M',
+    city: '',
+    state: '',
+    status: 'active'
+  })
+  const queryClient = useQueryClient()
+  const createPatient = useCreatePatient()
+  const { data: patientsResponse, isLoading, isError, error } = usePatients({ page: 1, limit: 8 })
+  const patients = useMemo(() => patientsResponse?.data || [], [patientsResponse])
+  const hasCreateError = Boolean(createPatient.error)
+
+  const handlePatientChange = (event) => {
+    const { name, value } = event.target
+    setPatientForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handlePatientSubmit = async (event) => {
+    event.preventDefault()
+    await createPatient.mutateAsync({
+      ...patientForm,
+      dateOfBirth: patientForm.dateOfBirth ? new Date(patientForm.dateOfBirth) : null
+    })
+    setPatientForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      gender: 'M',
+      city: '',
+      state: '',
+      status: 'active'
+    })
+    await queryClient.invalidateQueries({ queryKey: ['patients'] })
+  }
 
   return (
     <div className="app">
@@ -135,25 +178,104 @@ const Dashboard = () => {
             </div>
             <div className="panel-body">
               {activeTab === 'patients' && (
-                <div className="table">
-                  <div className="row header">
-                    <span>Patient</span>
-                    <span>Status</span>
-                    <span>Last Visit</span>
-                    <span>Physician</span>
-                  </div>
-                  {[
-                    ['John Doe', 'Active', 'Feb 12, 2026', 'Dr. Hammond'],
-                    ['Sarah Smith', 'Follow-up', 'Feb 10, 2026', 'Dr. Gupta'],
-                    ['Michael Johnson', 'Critical', 'Feb 13, 2026', 'Dr. Chen']
-                  ].map((row) => (
-                    <div key={row[0]} className="row">
-                      <span>{row[0]}</span>
-                      <span className={`badge ${row[1].toLowerCase()}`}>{row[1]}</span>
-                      <span>{row[2]}</span>
-                      <span>{row[3]}</span>
+                <div className="patients">
+                  <form className="patient-form" onSubmit={handlePatientSubmit}>
+                    <div className="form-title">Add New Patient</div>
+                    <div className="form-grid">
+                      <input
+                        name="firstName"
+                        value={patientForm.firstName}
+                        onChange={handlePatientChange}
+                        placeholder="First name"
+                        required
+                      />
+                      <input
+                        name="lastName"
+                        value={patientForm.lastName}
+                        onChange={handlePatientChange}
+                        placeholder="Last name"
+                        required
+                      />
+                      <input
+                        type="email"
+                        name="email"
+                        value={patientForm.email}
+                        onChange={handlePatientChange}
+                        placeholder="Email"
+                        required
+                      />
+                      <input
+                        name="phone"
+                        value={patientForm.phone}
+                        onChange={handlePatientChange}
+                        placeholder="Phone"
+                        required
+                      />
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        value={patientForm.dateOfBirth}
+                        onChange={handlePatientChange}
+                        required
+                      />
+                      <select name="gender" value={patientForm.gender} onChange={handlePatientChange}>
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      <input
+                        name="city"
+                        value={patientForm.city}
+                        onChange={handlePatientChange}
+                        placeholder="City"
+                      />
+                      <input
+                        name="state"
+                        value={patientForm.state}
+                        onChange={handlePatientChange}
+                        placeholder="State"
+                      />
+                      <select name="status" value={patientForm.status} onChange={handlePatientChange}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
                     </div>
-                  ))}
+                    <button className="btn primary" type="submit" disabled={createPatient.isPending}>
+                      {createPatient.isPending ? 'Saving…' : 'Save Patient'}
+                    </button>
+                    {hasCreateError && (
+                      <div className="form-error">Could not save patient. Check inputs.</div>
+                    )}
+                  </form>
+
+                  <div className="table">
+                    <div className="row header">
+                      <span>Patient</span>
+                      <span>Status</span>
+                      <span>Contact</span>
+                      <span>City</span>
+                    </div>
+                    {isLoading && <div className="row empty">Loading patients…</div>}
+                    {isError && (
+                      <div className="row empty">
+                        Failed to load patients{error?.message ? `: ${error.message}` : ''}.
+                      </div>
+                    )}
+                    {!isLoading && !isError && patients.length === 0 && (
+                      <div className="row empty">No patients found.</div>
+                    )}
+                    {!isLoading &&
+                      !isError &&
+                      patients.map((patient) => (
+                        <div key={patient.id} className="row">
+                          <span>{`${patient.firstName} ${patient.lastName}`}</span>
+                          <span className={`badge ${patient.status}`}>{patient.status}</span>
+                          <span>{patient.phone || patient.email}</span>
+                          <span>{patient.city || '-'}</span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
               {activeTab === 'appointments' && (
