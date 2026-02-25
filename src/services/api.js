@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1'
+// In ECS/ALB deployment, frontend and APIs are served behind the same domain.
+// Default to relative /api/v1 so ALB path routing forwards requests correctly.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
