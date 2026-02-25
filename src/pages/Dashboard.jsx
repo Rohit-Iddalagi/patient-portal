@@ -20,6 +20,11 @@ const Dashboard = () => {
   const { data: patientsResponse, isLoading, isError, error } = usePatients({ page: 1, limit: 8 })
   const patients = useMemo(() => patientsResponse?.data || [], [patientsResponse])
   const hasCreateError = Boolean(createPatient.error)
+  const createErrorMessage =
+    createPatient.error?.response?.data?.errors?.[0]?.message ||
+    createPatient.error?.response?.data?.message ||
+    createPatient.error?.message ||
+    'Could not save patient. Check inputs.'
 
   const handlePatientChange = (event) => {
     const { name, value } = event.target
@@ -29,8 +34,14 @@ const Dashboard = () => {
   const handlePatientSubmit = async (event) => {
     event.preventDefault()
     await createPatient.mutateAsync({
-      ...patientForm,
-      dateOfBirth: patientForm.dateOfBirth ? new Date(patientForm.dateOfBirth) : null
+      firstName: patientForm.firstName.trim(),
+      lastName: patientForm.lastName.trim(),
+      email: patientForm.email.trim(),
+      phone: patientForm.phone.trim(),
+      dateOfBirth: patientForm.dateOfBirth,
+      gender: patientForm.gender,
+      city: patientForm.city.trim() || undefined,
+      state: patientForm.state.trim() || undefined
     })
     setPatientForm({
       firstName: '',
@@ -244,9 +255,7 @@ const Dashboard = () => {
                     <button className="btn primary" type="submit" disabled={createPatient.isPending}>
                       {createPatient.isPending ? 'Saving…' : 'Save Patient'}
                     </button>
-                    {hasCreateError && (
-                      <div className="form-error">Could not save patient. Check inputs.</div>
-                    )}
+                    {hasCreateError && <div className="form-error">{createErrorMessage}</div>}
                   </form>
 
                   <div className="table">
